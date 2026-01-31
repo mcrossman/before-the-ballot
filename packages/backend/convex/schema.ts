@@ -13,13 +13,38 @@ export default defineSchema({
       fipsCode: v.optional(v.string()),
     }),
 
-    // Content
+    // Content - Full document extraction
     title: v.string(),
-    officialText: v.string(),
-    textHash: v.string(),
+    officialText: v.string(),                 // Legacy: deprecated but kept for compatibility
+    fullText: v.optional(v.string()),         // Complete document text with page breaks
+    pages: v.optional(v.array(v.string())),   // Page-by-page text array for citation mapping
+    
+    // PDF Metadata
+    metadata: v.optional(v.object({
+      title: v.optional(v.string()),
+      author: v.optional(v.string()),
+      subject: v.optional(v.string()),
+      keywords: v.optional(v.string()),
+      creator: v.optional(v.string()),
+      producer: v.optional(v.string()),
+      creationDate: v.optional(v.string()),
+      modificationDate: v.optional(v.string()),
+      pdfVersion: v.optional(v.string()),
+    })),
+    
+    // Extraction Statistics
+    stats: v.optional(v.object({
+      pageCount: v.number(),
+      wordCount: v.number(),
+      charCount: v.number(),
+    })),
+    
+    // Change Detection
+    textHash: v.string(),                     // SHA256 of fullText for deduplication
+    
+    // Source References
+    officialTextUrl: v.optional(v.string()),
     fiscalImpactText: v.optional(v.string()),
-
-    // Source tracking
     sourceUrl: v.string(),
     sourceType: v.union(
       v.literal("ca-sos"),

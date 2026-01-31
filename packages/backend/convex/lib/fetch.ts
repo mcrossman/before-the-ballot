@@ -6,7 +6,7 @@ export async function fetchWithRetry(
   options: RequestInit = {},
   maxRetries = 3
 ): Promise<Response> {
-  let lastError: Error;
+  let lastError: Error | undefined;
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {

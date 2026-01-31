@@ -24,41 +24,94 @@ export interface LocalMeasureLink {
  */
 export function parseCaSosListing(html: string): CaMeasureLink[] {
   const measures: CaMeasureLink[] = [];
+  const foundUrls = new Set<string>();
 
-  // Use regex to find measure patterns
-  // Look for "Proposition N" followed by title and PDF link
-  const measurePattern =
+  // Pattern 1: Look for "Proposition N" followed by title and PDF link
+  const propositionPattern =
     /Proposition\s+(\d+)[\s\S]*?([^\n]+)[\s\S]*?href="([^"]+\.pdf)"/gi;
 
   let match;
-  while ((match = measurePattern.exec(html)) !== null) {
+  while ((match = propositionPattern.exec(html)) !== null) {
     const measureNumber = `Proposition ${match[1]}`;
     const title = cleanTitle(match[2]);
-    const url = normalizeUrl(match[3], "https://www.sos.ca.gov");
+    const url = normalizeCaUrl(match[3]);
 
-    measures.push({
-      url,
-      measureNumber,
-      title,
-    });
+    if (!foundUrls.has(url)) {
+      foundUrls.add(url);
+      measures.push({
+        url,
+        measureNumber,
+        title,
+      });
+    }
   }
 
-  // Alternative: Look for structured HTML
-  // Look for links containing "prop" or "proposition"
-  const linkPattern = /href="([^"]*(?:prop|proposition)[^"]*\.pdf)"/gi;
-  const foundUrls = new Set(measures.map((m) => m.url));
+  // Pattern 2: Look for links to elections.cdn.sos.ca.gov ballot-measures PDFs
+  // These are the actual measure URLs like: sca-1-24.pdf, aca-13.pdf, sb-42.pdf
+  const pdfLinkPattern = /href="([^"]*ballot-measures[^"]*\.pdf)"/gi;
 
-  while ((match = linkPattern.exec(html)) !== null) {
-    const url = normalizeUrl(match[1], "https://www.sos.ca.gov");
+  while ((match = pdfLinkPattern.exec(html)) !== null) {
+    const url = normalizeCaUrl(match[1]);
     if (!foundUrls.has(url)) {
-      // Try to extract measure number from URL
-      const numberMatch = url.match(/prop(?:osition)?[\-_]?(\d+)/i);
-      if (numberMatch) {
-        measures.push({
-          url,
-          measureNumber: `Proposition ${numberMatch[1]}`,
-          title: "Unknown Title", // Will need manual review
-        });
+      foundUrls.add(url);
+      
+      // Extract measure identifier from URL
+      // Examples: sca-1-24.pdf -> SCA 1, aca-13.pdf -> ACA 13, sb-42.pdf -> SB 42
+      const urlMatch = url.match(/\/([^\/]+)\.pdf$/);
+      if (urlMatch) {
+        const fileName = urlMatch[1];
+        // Convert filename to measure number
+        // sca-1-24 -> SCA 1, prop-1 -> Proposition 1
+        const measureMatch = fileName.match(/^(sca|aca|sb|ab|prop)[-_]?(\d+)(?:[-_]\d+)?$/i);
+        if (measureMatch) {
+          const type = measureMatch[1].toUpperCase();
+          const number = measureMatch[2];
+          let measureNumber: string;
+          
+          if (type === "PROP") {
+            measureNumber = `Proposition ${number}`;
+          } else {
+            measureNumber = `${type} ${number}`;
+          }
+          
+          // Try to find title near this link in the HTML
+          const title = extractTitleNearLink(html, match.index);
+          
+          measures.push({
+            url,
+            measureNumber,
+            title,
+          });
+        }
+      }
+    }
+  }
+
+  // Pattern 3: Look for any .pdf links on elections.cdn.sos.ca.gov
+  const cdnPattern = /href="([^"]*elections\.cdn\.sos\.ca\.gov[^"]*\.pdf)"/gi;
+
+  while ((match = cdnPattern.exec(html)) !== null) {
+    const url = match[1]; // Already absolute
+    if (!foundUrls.has(url)) {
+      foundUrls.add(url);
+      
+      // Try to extract measure info from URL
+      const urlMatch = url.match(/\/([^\/]+)\.pdf$/);
+      if (urlMatch) {
+        const fileName = urlMatch[1];
+        const measureMatch = fileName.match(/^(sca|aca|sb|ab|prop)[-_]?(\d+)(?:[-_]\d+)?$/i);
+        if (measureMatch) {
+          const type = measureMatch[1].toUpperCase();
+          const number = measureMatch[2];
+          const measureNumber = type === "PROP" ? `Proposition ${number}` : `${type} ${number}`;
+          const title = extractTitleNearLink(html, match.index);
+          
+          measures.push({
+            url,
+            measureNumber,
+            title,
+          });
+        }
       }
     }
   }
@@ -105,6 +158,42 @@ function cleanTitle(title: string): string {
     .replace(/\s+/g, " ")
     .replace(/^[-\s]+|[-\s]+$/g, "")
     .trim();
+}
+
+/**
+ * Normalize CA SOS URLs to absolute URLs
+ * Handles both www.sos.ca.gov and elections.cdn.sos.ca.gov
+ */
+function normalizeCaUrl(url: string): string {
+  if (url.startsWith("http")) {
+    return url;
+  }
+  if (url.startsWith("/")) {
+    return `https://www.sos.ca.gov${url}`;
+  }
+  return `https://www.sos.ca.gov/${url}`;
+}
+
+/**
+ * Extract measure title from HTML near a link position
+ */
+function extractTitleNearLink(html: string, linkPosition: number): string {
+  // Look at text before the link for title/context
+  const beforeText = html.substring(Math.max(0, linkPosition - 500), linkPosition);
+  
+  // Try to find a title pattern
+  // Look for text between tags that's reasonably long
+  const titleMatch = beforeText.match(/>([^<]{10,200})</g);
+  if (titleMatch) {
+    // Get the last (closest) match
+    const lastMatch = titleMatch[titleMatch.length - 1];
+    const title = lastMatch.replace(/[><]/g, "").trim();
+    if (title.length > 5) {
+      return cleanTitle(title);
+    }
+  }
+  
+  return "Pending Title";
 }
 
 /**

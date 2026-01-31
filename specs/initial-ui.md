@@ -1,7 +1,8 @@
 # Initial UI Implementation
 
-**Status**: Ready for implementation  
+**Status**: Implemented  
 **Based on**: [UX/UI Design Specification](./ux-ui.md)
+**Code Location**: `apps/web/src/`
 
 ## Overview
 
@@ -111,22 +112,22 @@ Implement the initial user interface with a clean navbar and two primary views: 
 ```
 apps/web/src/
 ├── components/
-│   ├── layout/
-│   │   ├── Header.tsx              # Main navbar
-│   │   ├── LocationSelector.tsx    # ZIP input modal/dropdown
-│   │   └── AuthButton.tsx          # Sign in button (placeholder)
+│   ├── ui/                         # shadcn/ui components
+│   │   ├── button.tsx
+│   │   ├── card.tsx
+│   │   ├── dialog.tsx              # Modal component for location selector
+│   │   ├── input.tsx
+│   │   ├── skeleton.tsx            # Loading skeletons
+│   │   └── ...
+│   ├── header.tsx                  # Main navbar with integrated location selector
 │   └── measure/
-│       ├── MeasureCard.tsx         # Individual measure card
-│       └── MeasureList.tsx         # List container
+│       └── MeasureCard.tsx         # Individual measure card
 ├── hooks/
-│   ├── useLocation.ts              # ZIP/localStorage management
-│   └── useMeasures.ts              # Mock data fetching
-├── lib/
-│   └── zipCodes.ts                 # CA ZIP validation utilities
+│   └── useLocation.ts              # ZIP/localStorage management + validation utilities
 └── routes/
     ├── index.tsx                   # Landing page (ZIP entry)
     └── measures/
-        └── index.tsx               # Measures list
+        └── index.tsx               # Measures list with mock data
 ```
 
 ## Component Specifications
@@ -197,24 +198,25 @@ const routes = [
 - Card-based layout for measures list
 - Keep dark mode as-is (system preference)
 
-## Implementation Order
+## Implementation Status
 
-1. **Header.tsx** - Basic navbar structure
-2. **LandingPage** - ZIP entry form with validation
-3. **useLocation hook** - localStorage persistence
-4. **MeasuresPage** - Placeholder with mock data
-5. **LocationSelector** - Modal for changing ZIP
-6. **AuthButton** - Placeholder sign-in button
+✅ **Completed**:
+- **Header.tsx** - Basic navbar with Home link, location selector dialog, Sign In button
+- **LandingPage** - ZIP entry form with validation and navigation to /measures
+- **useLocation hook** - localStorage persistence with ZIP lookup utilities
+- **MeasuresPage** - Placeholder with mock data and loading skeletons
+- **MeasureCard** - Card component for displaying ballot measures
+- **Dialog component** - Base UI dialog for location selector
 
 ## Acceptance Criteria
 
-- [ ] Navbar shows Home, Location, Auth buttons
-- [ ] Landing page centers ZIP entry form
-- [ ] Entering valid ZIP navigates to measures
-- [ ] Measures page shows placeholder cards
-- [ ] Location persists across page reloads
-- [ ] Mobile layout stacks appropriately
-- [ ] No console errors, clean TypeScript
+- [x] Navbar shows Home, Location, Auth buttons
+- [x] Landing page centers ZIP entry form
+- [x] Entering valid ZIP navigates to measures
+- [x] Measures page shows placeholder cards
+- [x] Location persists across page reloads
+- [x] Mobile layout stacks appropriately
+- [x] No console errors, clean TypeScript
 
 ## Open Questions
 

@@ -1,9 +1,8 @@
-import { action } from "../_generated/server";
-import { v } from "convex/values";
+import { internalAction } from "../_generated/server";
 import { fetchWithRetry } from "../lib/fetch";
-import { extractPdfText } from "../lib/pdf";
 import { parseCaSosListing, type CaMeasureLink } from "../lib/parsers";
-import crypto from "crypto";
+import { api } from "../_generated/api";
+import { internal } from "../_generated/api";
 
 export interface ScrapeResult {
   processed: number;
@@ -12,7 +11,7 @@ export interface ScrapeResult {
   failed: string[];
 }
 
-export const scrapeCaSos = action({
+export const scrapeCaSos = internalAction({
   args: {},
   handler: async (ctx): Promise<ScrapeResult> => {
     // Create job record
@@ -99,15 +98,11 @@ async function processCaMeasure(
   link: CaMeasureLink,
   jobId: string
 ): Promise<"created" | "updated" | "unchanged"> {
-  // Download PDF
-  const pdfResponse = await fetchWithRetry(link.url);
-  const pdfBuffer = Buffer.from(await pdfResponse.arrayBuffer());
-
-  // Extract text
-  const text = await extractPdfText(pdfBuffer);
-
-  // Calculate hash
-  const textHash = crypto.createHash("sha256").update(text).digest("hex");
+  // Extract full document content via internal action (uses "use node")
+  // Note: internal.lib.pdfExtraction will be available after Convex code generation
+  const extraction = await ctx.runAction(internal.lib.pdfExtraction.extractPdfFull, {
+    url: link.url,
+  });
 
   // Check existing
   const existing = await ctx.runQuery(api.measures.findBySourceUrl, {
@@ -115,26 +110,33 @@ async function processCaMeasure(
   });
 
   if (existing) {
-    if (existing.textHash === textHash) {
+    if (existing.textHash === extraction.textHash) {
       // No change
       return "unchanged";
     } else {
-      // Update (rare)
-      await ctx.runMutation(api.measures.update, {
+      // Update with full extraction data
+      await ctx.runMutation(api.measures.updateFull, {
         id: existing._id,
-        officialText: text,
-        textHash,
+        fullText: extraction.fullText,
+        pages: extraction.pages,
+        metadata: extraction.metadata,
+        stats: extraction.stats,
+        textHash: extraction.textHash,
         lastUpdatedAt: Date.now(),
       });
       return "updated";
     }
   } else {
-    // New measure
-    await ctx.runMutation(api.measures.create, {
+    // New measure with full extraction data
+    await ctx.runMutation(api.measures.createFull, {
       measureNumber: link.measureNumber,
       title: link.title,
-      officialText: text,
-      textHash,
+      fullText: extraction.fullText,
+      pages: extraction.pages,
+      metadata: extraction.metadata,
+      stats: extraction.stats,
+      textHash: extraction.textHash,
+      officialTextUrl: link.url,
       sourceUrl: link.url,
       sourceType: "ca-sos",
       jurisdiction: { type: "state", name: "California" },
@@ -159,6 +161,3 @@ function isStructuralError(err: unknown): boolean {
   }
   return false;
 }
-
-// Import api for mutations
-import { api } from "../_generated/api";

@@ -1,15 +1,13 @@
-import { action } from "../_generated/server";
-import { v } from "convex/values";
+import { internalAction } from "../_generated/server";
 import { fetchWithRetry } from "../lib/fetch";
-import { extractPdfText } from "../lib/pdf";
 import {
   parseSantaClaraListing,
   type LocalMeasureLink,
 } from "../lib/parsers";
-import crypto from "crypto";
 import { api } from "../_generated/api";
+import { internal } from "../_generated/api";
 
-export const scrapeSantaClara = action({
+export const scrapeSantaClara = internalAction({
   args: {},
   handler: async (ctx) => {
     // Create job record
@@ -94,15 +92,11 @@ async function processLocalMeasure(
   link: LocalMeasureLink,
   jobId: string
 ): Promise<"created" | "updated" | "unchanged"> {
-  // Download PDF
-  const pdfResponse = await fetchWithRetry(link.url);
-  const pdfBuffer = Buffer.from(await pdfResponse.arrayBuffer());
-
-  // Extract text
-  const text = await extractPdfText(pdfBuffer);
-
-  // Calculate hash
-  const textHash = crypto.createHash("sha256").update(text).digest("hex");
+  // Extract full document content via internal action (uses "use node")
+  // Note: internal.lib.pdfExtraction will be available after Convex code generation
+  const extraction = await ctx.runAction(internal.lib.pdfExtraction.extractPdfFull, {
+    url: link.url,
+  });
 
   // Check existing
   const existing = await ctx.runQuery(api.measures.findBySourceUrl, {
@@ -110,23 +104,32 @@ async function processLocalMeasure(
   });
 
   if (existing) {
-    if (existing.textHash === textHash) {
+    if (existing.textHash === extraction.textHash) {
       return "unchanged";
     } else {
-      await ctx.runMutation(api.measures.update, {
+      // Update with full extraction data
+      await ctx.runMutation(api.measures.updateFull, {
         id: existing._id,
-        officialText: text,
-        textHash,
+        fullText: extraction.fullText,
+        pages: extraction.pages,
+        metadata: extraction.metadata,
+        stats: extraction.stats,
+        textHash: extraction.textHash,
         lastUpdatedAt: Date.now(),
       });
       return "updated";
     }
   } else {
-    await ctx.runMutation(api.measures.create, {
+    // New measure with full extraction data
+    await ctx.runMutation(api.measures.createFull, {
       measureNumber: link.measureNumber,
       title: link.title,
-      officialText: text,
-      textHash,
+      fullText: extraction.fullText,
+      pages: extraction.pages,
+      metadata: extraction.metadata,
+      stats: extraction.stats,
+      textHash: extraction.textHash,
+      officialTextUrl: link.url,
       sourceUrl: link.url,
       sourceType: "santa-clara-county",
       jurisdiction: link.jurisdiction,

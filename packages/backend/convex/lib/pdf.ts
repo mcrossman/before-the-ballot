@@ -1,54 +1,35 @@
 /**
- * PDF text extraction utilities
- * Note: pdf-parse must be installed in packages/backend
+ * PDF utilities - simplified version that stores URLs without parsing
+ * Note: PDF text extraction would require "use node" directive
  */
 
-export async function extractPdfText(buffer: Buffer): Promise<string> {
-  // Dynamic import to handle optional dependency
-  try {
-    const pdfParse = await import("pdf-parse");
-    const data = await pdfParse.default(buffer);
-    return cleanMeasureText(data.text);
-  } catch (err) {
-    console.error("PDF extraction failed:", err);
-    throw new Error(`Failed to extract PDF text: ${err}`);
-  }
+export interface PdfMetadata {
+  url: string;
+  contentType: string | null;
+  contentLength: number | null;
+  lastModified: string | null;
 }
 
-export async function extractPdfTextFallback(buffer: Buffer): Promise<string> {
-  // Fallback using pdf2json if pdf-parse fails
-  try {
-    const PDFParser = (await import("pdf2json")).default;
-
-    return new Promise((resolve, reject) => {
-      const parser = new PDFParser();
-
-      parser.on("pdfParser_dataReady", (pdfData) => {
-        resolve(cleanMeasureText(pdfData.RawTextContent));
-      });
-
-      parser.on("pdfParser_dataError", (err) => {
-        reject(new Error(`PDF2JSON error: ${err}`));
-      });
-
-      parser.parseBuffer(buffer);
-    });
-  } catch (err) {
-    throw new Error(`Fallback PDF extraction failed: ${err}`);
-  }
+export async function fetchPdfMetadata(url: string): Promise<PdfMetadata> {
+  const response = await fetch(url, { method: "HEAD" });
+  
+  return {
+    url,
+    contentType: response.headers.get("content-type"),
+    contentLength: response.headers.get("content-length") 
+      ? parseInt(response.headers.get("content-length")!, 10) 
+      : null,
+    lastModified: response.headers.get("last-modified"),
+  };
 }
 
 /**
- * Clean extracted measure text
+ * Placeholder for future PDF text extraction
+ * Would require "use node" directive and libraries like pdf-parse
  */
-export function cleanMeasureText(rawText: string): string {
-  return (
-    rawText
-      // Normalize multiple newlines
-      .replace(/\n{3,}/g, "\n\n")
-      // Replace form feeds
-      .replace(/\f/g, "\n")
-      // Trim whitespace
-      .trim()
+export async function extractPdfText(_buffer: Buffer): Promise<string> {
+  throw new Error(
+    "PDF text extraction requires Node.js runtime. " +
+    "Add 'use node' directive to use pdf-parse library."
   );
 }
