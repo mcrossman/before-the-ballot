@@ -19,7 +19,7 @@ export interface Insight {
   content: string;
   citations: Citation[];
   confidence: "high" | "medium" | "low";
-  uncertaintyFlags: string[];
+  uncertaintyFlags?: string[];
 }
 
 interface InsightConfig {
@@ -129,7 +129,7 @@ export function InsightAccordion({ insight, defaultExpanded = false }: InsightAc
                   Confidence: {insight.confidence}
                 </span>
               </span>
-              {insight.uncertaintyFlags.length > 0 && (
+              {insight.uncertaintyFlags && insight.uncertaintyFlags.length > 0 && (
                 <span className="flex items-center gap-1.5 text-accent-warning">
                   <AlertTriangle className="h-4 w-4" />
                   {insight.uncertaintyFlags.length} uncertainties

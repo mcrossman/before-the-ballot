@@ -17,11 +17,17 @@ export const Route = createFileRoute("/measures/$measureSlug")({
 
 function MeasureDetailPage() {
   // Use demo data for now
+  const electionLabel = `${demoMeasure.jurisdiction.name} • ${new Date(demoElection.date).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`;
+  
   return (
     <MeasureSummary
-      measure={demoMeasure}
+      measureNumber={demoMeasure.measureNumber}
+      title={demoMeasure.title}
+      jurisdictionName={demoMeasure.jurisdiction.name}
+      electionLabel={electionLabel}
+      status={demoMeasure.status}
+      measureType={demoMeasure.measureType}
       insights={demoInsights}
-      election={demoElection}
     />
   );
 }

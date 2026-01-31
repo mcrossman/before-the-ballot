@@ -1,4 +1,4 @@
-import { Vote, PenLine, BarChart3 } from "lucide-react";
+import { Vote, PenLine, BarChart3, Scale } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export interface Measure {
@@ -17,6 +17,7 @@ const typeIcons = {
   proposition: Vote,
   initiative: PenLine,
   measure: BarChart3,
+  "constitutional-amendment": Scale,
 } as const;
 
 export function MeasureCard({ measure }: MeasureCardProps) {
