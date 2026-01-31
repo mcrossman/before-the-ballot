@@ -1,8 +1,9 @@
 # Measure Summary View Specification
 
-**Status**: Draft  
+**Status**: Ready for Implementation  
 **Based on**: [UX/UI Design Specification](./ux-ui.md), [Concept](./concept.md), [Ingestion](./ingestion.md)  
 **Code Location**: `apps/web/src/routes/measures/$measureSlug.tsx`  
+**Last Updated**: 2025-01-30  
 
 ## Overview
 
@@ -161,16 +162,16 @@ For historical measures with `outcome` data:
 - **Measure Number** - `measureNumber` field (e.g., "Proposition 1")
 - **Title** - `title` field
 - **Jurisdiction** - `jurisdiction.name` + election info
-- **Share Button** - copies permalink to clipboard
+- **Share Button** - copies "{Measure Title} - beforetheballot.com/measures/{slug}" to clipboard
 
 ### Summary Section (Always Visible)
 
 - **Content** - Insight with `type: "summary"` from insights table
 - **Citation Links** - Inline "[View in official text]" links that open citation blocks
-- **Quick Facts** - Derived from measure metadata:
+- **Quick Facts** - Structured fields in measures table:
   - Status: `measures.status`
-  - Type: Inferred from content or `fiscalImpactText` presence
-  - Estimated Cost: Extracted from fiscal insight or `fiscalImpactText`
+  - Type: `measures.measureType` (new field: "Bond Measure", "Statute", "Constitutional Amendment", etc.)
+  - Estimated Cost: `measures.estimatedCost` (new field, extracted during ingestion)
   - Voting Deadline: From `elections.date`
 
 ### Expandable Insight Sections
@@ -195,7 +196,7 @@ Each section shows:
 Each citation displays:
 - **Location** - Section/line reference (derived from `citations.startOffset` + context)
 - **Quoted Text** - `citations.textSpan` (exact excerpt from insight generation)
-- **Context Button** - Opens PDF viewer with highlighted location
+- **Context Button** - Opens modal with LLM-generated text view
 
 **Citation Data Structure** (from schema):
 ```typescript
@@ -203,11 +204,44 @@ Each citation displays:
   textSpan: string,      // Exact quoted text
   startOffset: number,   // Character position in official text
   endOffset: number,     // Character position in official text
-  context?: string       // Optional surrounding context
+  context?: string       // Optional: minimal surrounding context
 }
 ```
 
-**PDF Viewing**: Uses `pdf.js` in the browser to render `measures.officialTextUrl`. Character offsets from citations are used to scroll/highlight the relevant section in the PDF viewer.
+**Text View Modal**: Clicking "[View in context]" opens a modal displaying LLM-generated structured markup of the official measure text (not raw PDF):
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Official Text: Proposition 1                  [✕ Close]│
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  SECTION 3. Appropriation                               │
+│                                                         │
+│  [Read earlier ↑]                                      │
+│                                                         │
+│     ...preceding context would appear here...          │
+│                                                         │
+│  ╔══════════════════════════════════════════════════╗  │
+│  ║ "The sum of ten billion dollars                  ║  │
+│  ║ ($10,000,000,000) is hereby appropriated..."     ║  │
+│  ╚══════════════════════════════════════════════════╝  │
+│                                                         │
+│     ...following context would appear here...          │
+│                                                         │
+│  [Read later ↓]                                        │
+│                                                         │
+├─────────────────────────────────────────────────────────┤
+│  Section 3 of 12    [← Previous] [Next →]               │
+└─────────────────────────────────────────────────────────┘
+```
+
+The modal shows:
+- The cited section with minimal surrounding context by default
+- **"Read earlier"** / **"Read later"** buttons to expand more context incrementally
+- Section navigation (previous/next)
+- Highlighted cited text
+
+**Implementation Note**: Initially use demo data for a specific PDF. The LLM-generated markup will be produced during ingestion phase (see Dependencies).
 
 ### Position/Actions Bar
 
@@ -228,8 +262,11 @@ Sticky at bottom on mobile, inline on desktop:
 - `outcome` - For historical measures (passed, yesVotes, noVotes, percentYes)
 - `officialTextUrl` - PDF URL for citation context
 - `fiscalImpactText` - Optional official fiscal analysis
+- `measureType` - "Bond Measure", "Statute", "Constitutional Amendment", etc. *(new)*
+- `estimatedCost` - Structured cost data (amount, timeframe, unit) *(new)*
+- `textMarkup` - LLM-generated structured HTML/markdown of official text *(new)*
 
-**insights table**:
+**insights table** (Pre-generated at ingestion time):
 - `measureId` - Links to measure
 - `type` - summary, fiscal, legal_changes, affected_groups, conflicts
 - `content` - AI-generated plain language explanation
@@ -238,6 +275,8 @@ Sticky at bottom on mobile, inline on desktop:
 - `uncertaintyFlags` - Array of vague language warnings
 - `generatedAt` - Timestamp for AI generation
 - `predictionAccuracy` - For historical measures (correct, partial, incorrect)
+
+**Note**: Insights are generated in batch after measure ingestion, not on-demand. The ingestion process will trigger LLM analysis for all measures nightly.
 
 **elections table**:
 - `date` - For voting deadline display
@@ -359,6 +398,7 @@ apps/web/src/
 │       ├── InsightAccordion.tsx       # Expandable insight sections
 │       ├── InsightCard.tsx            # Individual insight display
 │       ├── CitationBlock.tsx          # Quoted text with context
+│       ├── TextViewModal.tsx          # LLM-generated text with context expansion
 │       ├── HistoricalOutcome.tsx      # Results for passed/failed
 │       └── PositionBar.tsx            # Support/Oppose/Undecided
 ```
@@ -382,11 +422,13 @@ If insights don't exist yet (measure just ingested):
 ━━━━━━━━━━━━━━━━━━━━
 Analyzing official text...
 
-This may take 10-20 seconds. You can read the 
-full text below while analysis is in progress.
+This may take 10-20 seconds. Analysis is running 
+in the background and will appear automatically.
 
 [📄 Read Official Text]
 ```
+
+**Note**: The "Read Official Text" button opens the text modal with raw extracted text (if available) while waiting for LLM markup and insights to be generated.
 
 ## Error States
 
@@ -440,31 +482,97 @@ If insights haven't been generated:
   - Mark confidence levels for pronunciation
 - **Focus Management**: Return focus to trigger after closing citation modal
 
-## Open Questions / Dependencies
+## Dependencies on Ingestion Specification
 
-1. **Official Text Display**: For citation "[View in context]" links, do we:
-   - Open a modal with the PDF/text?
-   - Navigate to a separate `/measures/{slug}/text` route?
-   - Use a drawer/sheet component?
+This implementation requires the following from the ingestion/data processing pipeline:
 
-2. **Quick Facts Data Source**: Should Quick Facts be:
-   - Extracted from insights content via regex?
-   - Stored as structured fields in measures table?
-   - Generated by a separate AI prompt?
+### 1. LLM-Generated Text Markup
+Instead of displaying raw PDFs, the system needs LLM-generated structured markup of official measure text:
 
-3. **Insight Generation Timing**: Are insights pre-generated at ingestion time, or generated on-demand when first viewed? Schema has `generatedAt` field suggesting pre-generation.
+**New Field Required**: `measures.textMarkup` - HTML or Markdown representation of the official text with:
+- Section headers parsed and labeled
+- Paragraph/line structure preserved
+- Character offset mapping aligned with citation offsets
+- Clean formatting (no PDF artifacts)
 
-4. **Citation Context**: The schema has `citations.context` as optional. Should we always populate this with surrounding sentences for better user experience?
+**Generation Process** (to be defined in ingestion spec):
+1. Download PDF from `officialTextUrl`
+2. Extract text (server-side with "use node" or external service)
+3. Use LLM to structure into sections with semantic markup
+4. Store in `textMarkup` field
+5. Ensure character offsets align with `insights.citations` references
 
-5. **Share Functionality**: What should the share button copy?
-   - Current URL only?
-   - Generated summary text + URL?
-   - Pre-formatted social media post?
+**Initial Phase**: Use hardcoded demo data for one specific measure (e.g., a recent California Proposition) to build the UI before ingestion pipeline is complete.
 
-6. **PDF.js Implementation**: 
-   - Should we render the full PDF or extract text-only?
-   - How do we handle character offset mapping to PDF pages/locations?
-   - Do we need a fallback for browsers without PDF support?
+### 2. Structured Quick Facts Fields
+Add to measures schema:
+- `measureType`: string enum ("Bond Measure", "Statute", "Constitutional Amendment", "Referendum")
+- `estimatedCost`: object with `{ amount: number, unit: string, timeframe: string }`
+
+**Extraction**: During ingestion, use LLM or regex to extract from official text or fiscal analysis.
+
+### 3. Insight Generation Pipeline
+Insights must be pre-generated after measure ingestion:
+
+**Process** (to be defined in ingestion spec):
+1. After storing new measure, trigger insight generation job
+2. For each insight type (summary, fiscal, legal_changes, affected_groups, conflicts):
+   - Call LLM with measure text + specific prompt
+   - Parse response for content + citations
+   - Store in `insights` table with confidence scores
+3. Handle failures gracefully (retry queue)
+4. Update `generatedAt` timestamp
+
+### 4. Citation Offset Alignment
+Critical: Character offsets in `insights.citations` must align with the character positions in `measures.textMarkup`.
+
+**Strategy**: Generate both text markup and insights in the same ingestion job to ensure alignment.
+
+## Schema Changes Required
+
+Add to `packages/backend/convex/schema.ts`:
+
+```typescript
+measures: defineTable({
+  // ... existing fields ...
+  
+  // Quick Facts (structured data)
+  measureType: v.optional(v.union(
+    v.literal("Bond Measure"),
+    v.literal("Statute"), 
+    v.literal("Constitutional Amendment"),
+    v.literal("Referendum")
+  )),
+  estimatedCost: v.optional(v.object({
+    amount: v.number(),
+    unit: v.string(), // "dollars", "million", "billion"
+    timeframe: v.string(), // "annually", "one-time", "over 30 years"
+  })),
+  
+  // LLM-generated structured text
+  textMarkup: v.optional(v.string()), // HTML/Markdown
+  textMarkupGeneratedAt: v.optional(v.number()),
+})
+```
+
+## Implementation Phases
+
+### Phase 1: Demo Data (Immediate)
+- Use hardcoded mock data for one California Proposition
+- Build all UI components with demo insights and citations
+- Implement modal with "read earlier/later" context expansion
+- Share button copies "Title - URL" format
+
+### Phase 2: Real Data (Blocked on Ingestion)
+- Connect to actual Convex queries
+- Display real insights from database
+- Show LLM-generated text markup in modal
+- Handle loading states for insight generation
+
+### Phase 3: Polish
+- Add section navigation within text modal
+- Optimize context expansion performance
+- Add copy-to-clipboard for individual citations
 
 ## Related Specifications
 
