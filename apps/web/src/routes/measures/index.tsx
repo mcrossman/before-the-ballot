@@ -105,9 +105,22 @@ function MeasuresComponent() {
         </div>
       ) : measures.length > 0 ? (
         <div className="space-y-4">
-          {measures.map((measure) => (
-            <MeasureCard key={measure.id} measure={measure} />
-          ))}
+          {measures.map((measure) => {
+            const slug = measure.number
+              .toLowerCase()
+              .replace(/\s+/g, "-")
+              .replace(/[^a-z0-9-]/g, "");
+            return (
+              <Link
+                key={measure.id}
+                to="/measures/$measureSlug"
+                params={{ measureSlug: slug }}
+                className="block"
+              >
+                <MeasureCard measure={measure} />
+              </Link>
+            );
+          })}
         </div>
       ) : (
         <div className="py-16 text-center">
