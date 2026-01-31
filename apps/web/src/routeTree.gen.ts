@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as MeasuresIndexRouteImport } from './routes/measures/index'
+import { Route as MeasuresMeasureSlugRouteImport } from './routes/measures/$measureSlug'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,30 +23,39 @@ const MeasuresIndexRoute = MeasuresIndexRouteImport.update({
   path: '/measures/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MeasuresMeasureSlugRoute = MeasuresMeasureSlugRouteImport.update({
+  id: '/measures/$measureSlug',
+  path: '/measures/$measureSlug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/measures/$measureSlug': typeof MeasuresMeasureSlugRoute
   '/measures/': typeof MeasuresIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/measures/$measureSlug': typeof MeasuresMeasureSlugRoute
   '/measures': typeof MeasuresIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/measures/$measureSlug': typeof MeasuresMeasureSlugRoute
   '/measures/': typeof MeasuresIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/measures/'
+  fullPaths: '/' | '/measures/$measureSlug' | '/measures/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/measures'
-  id: '__root__' | '/' | '/measures/'
+  to: '/' | '/measures/$measureSlug' | '/measures'
+  id: '__root__' | '/' | '/measures/$measureSlug' | '/measures/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  MeasuresMeasureSlugRoute: typeof MeasuresMeasureSlugRoute
   MeasuresIndexRoute: typeof MeasuresIndexRoute
 }
 
@@ -65,11 +75,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MeasuresIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/measures/$measureSlug': {
+      id: '/measures/$measureSlug'
+      path: '/measures/$measureSlug'
+      fullPath: '/measures/$measureSlug'
+      preLoaderRoute: typeof MeasuresMeasureSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  MeasuresMeasureSlugRoute: MeasuresMeasureSlugRoute,
   MeasuresIndexRoute: MeasuresIndexRoute,
 }
 export const routeTree = rootRouteImport

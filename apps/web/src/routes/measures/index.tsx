@@ -11,6 +11,13 @@ export const Route = createFileRoute("/measures/")({
 
 const mockMeasures: Measure[] = [
   {
+    id: "demo-aca-13",
+    number: "ACA 13",
+    title: "Protect and Retain the Majority Vote Act",
+    description: "Amends the California Constitution to require ballot initiatives seeking to increase voting thresholds to be approved by that same higher threshold. Also authorizes local advisory votes on governance issues.",
+    type: "constitutional-amendment",
+  },
+  {
     id: "1",
     number: "Proposition 1",
     title: "Housing Bond Measure",
@@ -72,9 +79,9 @@ function MeasuresComponent() {
         <p className="text-muted-foreground mb-4">
           Please set your location to view ballot measures.
         </p>
-        <Button asChild>
-          <Link to="/">Set Location</Link>
-        </Button>
+        <Link to="/">
+          <Button>Set Location</Button>
+        </Link>
       </div>
     );
   }
@@ -111,9 +118,9 @@ function MeasuresComponent() {
       )}
 
       <div className="mt-8 text-center">
-        <Button variant="outline" asChild>
-          <Link to="/">Change Location</Link>
-        </Button>
+        <Link to="/">
+          <Button variant="outline">Change Location</Button>
+        </Link>
       </div>
     </div>
   );

@@ -8,6 +8,7 @@ export const createFull = mutation({
     title: v.string(),
     fullText: v.string(),
     pages: v.array(v.string()),
+    textFileId: v.optional(v.id("_storage")),
     metadata: v.object({
       title: v.optional(v.string()),
       author: v.optional(v.string()),
