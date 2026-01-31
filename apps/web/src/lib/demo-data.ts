@@ -8,6 +8,7 @@ export interface Citation {
   startOffset: number;
   endOffset: number;
   context?: string;
+  sectionLabel?: string;
 }
 
 export interface Insight {
@@ -17,7 +18,7 @@ export interface Insight {
   content: string;
   confidence: "high" | "medium" | "low";
   uncertaintyFlags?: string[];
-  citations: Citation[];
+  citations: Citation[];  // Always required, use empty array if none
   generatedAt: number;
   model: string;
   promptVersion: string;

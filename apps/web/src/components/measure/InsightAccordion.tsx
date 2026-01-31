@@ -104,7 +104,7 @@ export function InsightAccordion({ insight, defaultExpanded = false }: InsightAc
           <>
             <p className="text-foreground">{insight.content}</p>
 
-            {insight.citations.length > 0 && (
+            {insight.citations?.length > 0 && (
               <div className="space-y-2">
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Citations
