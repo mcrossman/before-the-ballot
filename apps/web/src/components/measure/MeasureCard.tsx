@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Vote, PenLine, BarChart3 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export interface Measure {
@@ -13,28 +13,29 @@ interface MeasureCardProps {
   measure: Measure;
 }
 
-export function MeasureCard({ measure }: MeasureCardProps) {
-  const icon = measure.type === "proposition" ? "📋" : measure.type === "initiative" ? "📝" : measure.type === "constitutional-amendment" ? "⚖️" : "📊";
+const typeIcons = {
+  proposition: Vote,
+  initiative: PenLine,
+  measure: BarChart3,
+} as const;
 
-  // Generate slug from measure number
-  const slug = measure.number.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+export function MeasureCard({ measure }: MeasureCardProps) {
+  const Icon = typeIcons[measure.type];
 
   return (
-    <Link to="/measures/$measureSlug" params={{ measureSlug: slug }}>
-      <Card className="cursor-pointer transition-colors hover:bg-muted/50">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <span>{icon}</span>
-            <span>{measure.number}</span>
-          </CardTitle>
-          <CardDescription className="font-medium text-foreground">
-            {measure.title}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground line-clamp-2">{measure.description}</p>
-        </CardContent>
-      </Card>
-    </Link>
+    <Card className="cursor-pointer transition-colors hover:bg-muted/50">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Icon className="h-5 w-5 text-muted-foreground" />
+          <span className="font-serif">{measure.number}</span>
+        </CardTitle>
+        <CardDescription className="font-medium text-foreground">
+          {measure.title}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p className="text-muted-foreground line-clamp-2">{measure.description}</p>
+      </CardContent>
+    </Card>
   );
 }

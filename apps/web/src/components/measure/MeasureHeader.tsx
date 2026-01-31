@@ -1,71 +1,60 @@
-import { Share2 } from "lucide-react";
+import { ArrowLeft, Share2 } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import type { Election } from "@/lib/demo-data";
+import { toast } from "sonner";
 
 interface MeasureHeaderProps {
   measureNumber: string;
   title: string;
-  jurisdiction: {
-    type: string;
-    name: string;
-  };
-  election?: Election;
-  onShare?: () => void;
+  jurisdictionName: string;
+  electionLabel: string;
+  shareUrl?: string;
 }
 
 export function MeasureHeader({
   measureNumber,
   title,
-  jurisdiction,
-  election,
-  onShare,
+  jurisdictionName,
+  electionLabel,
+  shareUrl,
 }: MeasureHeaderProps) {
-  const handleShare = () => {
-    const shareText = `${measureNumber}: ${title} - beforetheballot.com`;
-    navigator.clipboard.writeText(shareText);
-    onShare?.();
+  const handleShare = async () => {
+    const text = `${title} - ${shareUrl ?? window.location.href}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Link copied to clipboard");
+    } catch {
+      toast.error("Failed to copy link");
+    }
   };
-
-  const formatElectionDate = (timestamp: number) => {
-    const date = new Date(timestamp);
-    return date.toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-
-  const electionTypeLabel = election?.type
-    ? election.type.charAt(0).toUpperCase() + election.type.slice(1)
-    : "";
 
   return (
-    <div className="space-y-2">
+    <header className="space-y-2 border-b pb-6">
+      <Link
+        to="/measures"
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        All Measures
+      </Link>
+
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight">{measureNumber}</h1>
-          <p className="text-xl text-muted-foreground">{title}</p>
+          <h1 className="font-serif text-3xl font-medium tracking-tight">
+            {measureNumber}
+          </h1>
+          <h2 className="font-serif text-xl text-muted-foreground">
+            {title}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {jurisdictionName} &bull; {electionLabel}
+          </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleShare}
-          className="shrink-0"
-        >
+        <Button variant="outline" size="sm" onClick={handleShare}>
           <Share2 className="mr-2 h-4 w-4" />
           Share
         </Button>
       </div>
-
-      <p className="text-sm text-muted-foreground">
-        {jurisdiction.name}
-        {election && (
-          <>
-            {" "}
-            • {formatElectionDate(election.date)} {electionTypeLabel} Election
-          </>
-        )}
-      </p>
-    </div>
+    </header>
   );
 }

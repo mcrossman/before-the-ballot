@@ -1,67 +1,68 @@
-import { MessageCircle, Bookmark } from "lucide-react";
+import { useState } from "react";
+import { Bookmark, ThumbsUp, ThumbsDown, HelpCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
+type Stance = "support" | "oppose" | "undecided";
+
 interface PositionBarProps {
-  currentStance?: "support" | "oppose" | "undecided";
-  onStanceChange?: (stance: "support" | "oppose" | "undecided") => void;
-  onAskQuestion?: () => void;
+  initialStance?: Stance;
+  onStanceChange?: (stance: Stance) => void;
+  isAuthenticated?: boolean;
 }
 
+const stanceOptions: { value: Stance; label: string; icon: typeof ThumbsUp }[] = [
+  { value: "support", label: "Support", icon: ThumbsUp },
+  { value: "oppose", label: "Oppose", icon: ThumbsDown },
+  { value: "undecided", label: "Undecided", icon: HelpCircle },
+];
+
 export function PositionBar({
-  currentStance,
+  initialStance,
   onStanceChange,
-  onAskQuestion,
+  isAuthenticated = false,
 }: PositionBarProps) {
-  const getStanceButtonClass = (stance: "support" | "oppose" | "undecided") => {
-    const baseClass = "flex-1";
-    if (currentStance === stance) {
-      switch (stance) {
-        case "support":
-          return `${baseClass} bg-green-600 hover:bg-green-700 text-white`;
-        case "oppose":
-          return `${baseClass} bg-red-600 hover:bg-red-700 text-white`;
-        case "undecided":
-          return `${baseClass} bg-yellow-600 hover:bg-yellow-700 text-white`;
-      }
-    }
-    return baseClass;
+  const [stance, setStance] = useState<Stance | undefined>(initialStance);
+
+  const handleSelect = (value: Stance) => {
+    setStance(value);
+    onStanceChange?.(value);
   };
 
   return (
-    <div className="sticky bottom-0 z-10 border-t bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="mx-auto flex max-w-3xl flex-col gap-3 sm:flex-row">
-        <div className="flex flex-1 gap-2">
-          <Button
-            variant={currentStance === "support" ? "default" : "outline"}
-            className={getStanceButtonClass("support")}
-            onClick={() => onStanceChange?.("support")}
-          >
-            <Bookmark className="mr-2 h-4 w-4" />
-            Support
-          </Button>
-          <Button
-            variant={currentStance === "oppose" ? "default" : "outline"}
-            className={getStanceButtonClass("oppose")}
-            onClick={() => onStanceChange?.("oppose")}
-          >
-            <Bookmark className="mr-2 h-4 w-4" />
-            Oppose
-          </Button>
-          <Button
-            variant={currentStance === "undecided" ? "default" : "outline"}
-            className={getStanceButtonClass("undecided")}
-            onClick={() => onStanceChange?.("undecided")}
-          >
-            <Bookmark className="mr-2 h-4 w-4" />
-            Undecided
-          </Button>
-        </div>
-
-        <Button variant="secondary" onClick={onAskQuestion}>
-          <MessageCircle className="mr-2 h-4 w-4" />
-          Ask a Question
-        </Button>
+    <div className="space-y-3 rounded-lg border bg-card p-4">
+      <div className="flex items-center gap-2 text-sm font-medium">
+        <Bookmark className="h-4 w-4" />
+        Save Your Position
       </div>
+      <div className="flex gap-2">
+        {stanceOptions.map((option) => {
+          const Icon = option.icon;
+          const selected = stance === option.value;
+          return (
+            <Button
+              key={option.value}
+              variant={selected ? "default" : "outline"}
+              size="sm"
+              className={cn(
+                "flex-1",
+                selected && option.value === "support" && "bg-confidence-high text-white hover:bg-confidence-high/90",
+                selected && option.value === "oppose" && "bg-destructive text-white hover:bg-destructive/90",
+                selected && option.value === "undecided" && "bg-accent-warning text-white hover:bg-accent-warning/90",
+              )}
+              onClick={() => handleSelect(option.value)}
+            >
+              <Icon className="mr-1.5 h-4 w-4" />
+              {option.label}
+            </Button>
+          );
+        })}
+      </div>
+      {!isAuthenticated && (
+        <p className="text-xs text-muted-foreground">
+          Sign in to save your positions across devices
+        </p>
+      )}
     </div>
   );
 }

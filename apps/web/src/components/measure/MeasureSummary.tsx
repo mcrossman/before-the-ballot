@@ -1,68 +1,96 @@
-import { ArrowLeft } from "lucide-react";
-import { Link } from "@tanstack/react-router";
-import { Button } from "@/components/ui/button";
 import { MeasureHeader } from "./MeasureHeader";
 import { QuickFacts } from "./QuickFacts";
-import { InsightAccordion } from "./InsightAccordion";
+import { InsightAccordion, type Insight } from "./InsightAccordion";
+import { HistoricalOutcome } from "./HistoricalOutcome";
 import { PositionBar } from "./PositionBar";
-import type { Measure, Insight, Election } from "@/lib/demo-data";
 
-interface MeasureSummaryProps {
-  measure: Measure;
-  insights: Insight[];
-  election?: Election;
+interface MeasureOutcome {
+  result: "passed" | "failed";
+  percentYes: number;
+  percentNo: number;
+  yesVotes?: number;
+  noVotes?: number;
 }
 
-export function MeasureSummary({ measure, insights, election }: MeasureSummaryProps) {
-  // Find summary insight
-  const summaryInsight = insights.find((i) => i.type === "summary");
+interface MeasureSummaryProps {
+  measureNumber: string;
+  title: string;
+  jurisdictionName: string;
+  electionLabel: string;
+  status: string;
+  measureType?: string;
+  estimatedCost?: string;
+  votingDeadline?: string;
+  insights: Insight[];
+  outcome?: MeasureOutcome;
+}
+
+const insightOrder = [
+  "summary",
+  "fiscal",
+  "legal_changes",
+  "affected_groups",
+  "conflicts",
+] as const;
+
+export function MeasureSummary({
+  measureNumber,
+  title,
+  jurisdictionName,
+  electionLabel,
+  status,
+  measureType,
+  estimatedCost,
+  votingDeadline,
+  insights,
+  outcome,
+}: MeasureSummaryProps) {
+  const insightsByType = Object.fromEntries(
+    insights.map((insight) => [insight.type, insight]),
+  );
+
+  const summaryInsight = insightsByType["summary"];
+  const accordionInsights = insightOrder
+    .filter((type) => type !== "summary")
+    .map((type) => insightsByType[type])
+    .filter(Boolean);
 
   return (
-    <div className="flex min-h-full flex-col">
-      <div className="flex-1">
-        <div className="container mx-auto max-w-3xl px-4 py-8">
-          {/* Back button */}
-          <div className="mb-6">
-            <Link to="/measures">
-              <Button variant="ghost" className="pl-0">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                All Measures
-              </Button>
-            </Link>
-          </div>
+    <div className="container mx-auto max-w-3xl space-y-6 px-4 py-8">
+      <MeasureHeader
+        measureNumber={measureNumber}
+        title={title}
+        jurisdictionName={jurisdictionName}
+        electionLabel={electionLabel}
+      />
 
-          {/* Header */}
-          <MeasureHeader
-            measureNumber={measure.measureNumber}
-            title={measure.title}
-            jurisdiction={measure.jurisdiction}
-            election={election}
-          />
+      {outcome && (
+        <HistoricalOutcome
+          outcome={outcome.result}
+          percentYes={outcome.percentYes}
+          percentNo={outcome.percentNo}
+          yesVotes={outcome.yesVotes}
+          noVotes={outcome.noVotes}
+        />
+      )}
 
-          {/* Summary Section */}
-          {summaryInsight && (
-            <div className="my-6 rounded-lg border bg-card p-6">
-              <div className="mb-3 flex items-center gap-2">
-                <span className="text-lg">📋</span>
-                <h2 className="font-semibold">Summary</h2>
-              </div>
-              <p className="text-muted-foreground leading-relaxed">
-                {summaryInsight.content}
-              </p>
-            </div>
-          )}
+      {summaryInsight && (
+        <InsightAccordion insight={summaryInsight} defaultExpanded />
+      )}
 
-          {/* Quick Facts */}
-          <QuickFacts measure={measure} election={election} />
+      <QuickFacts
+        status={status}
+        measureType={measureType}
+        estimatedCost={estimatedCost}
+        votingDeadline={votingDeadline}
+      />
 
-          {/* Insight Accordions */}
-          <div className="mt-6">
-            <InsightAccordion insights={insights} />
-          </div>
-        </div>
+      <div className="space-y-4">
+        {accordionInsights.map((insight) => (
+          <InsightAccordion key={insight.type} insight={insight} />
+        ))}
       </div>
 
-      {/* Position Bar */}
       <PositionBar />
     </div>
   );

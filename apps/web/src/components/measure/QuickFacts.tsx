@@ -1,72 +1,48 @@
-import { Badge } from "@/components/ui/badge";
-import type { Measure, Election } from "@/lib/demo-data";
+import { Clock, FileText, DollarSign, Calendar } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface QuickFactsProps {
-  measure: Measure;
-  election?: Election;
+  status: string;
+  measureType?: string;
+  estimatedCost?: string;
+  votingDeadline?: string;
 }
 
-export function QuickFacts({ measure, election }: QuickFactsProps) {
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-
-  const getStatusBadge = () => {
-    switch (measure.status) {
-      case "upcoming":
-        return <Badge variant="secondary">Upcoming</Badge>;
-      case "active":
-        return <Badge variant="default">Active</Badge>;
-      case "passed":
-        return (
-          <Badge variant="outline" className="border-green-500 text-green-600">
-            Passed
-          </Badge>
-        );
-      case "failed":
-        return (
-          <Badge variant="outline" className="border-red-500 text-red-600">
-            Failed
-          </Badge>
-        );
-      default:
-        return <Badge variant="secondary">{measure.status}</Badge>;
-    }
-  };
-
-  const formatCost = () => {
-    if (!measure.estimatedCost) return "N/A";
-    const { amount, unit, timeframe } = measure.estimatedCost;
-    return `$${amount} ${unit} ${timeframe}`;
-  };
+export function QuickFacts({ status, measureType, estimatedCost, votingDeadline }: QuickFactsProps) {
+  const facts = [
+    {
+      label: "Status",
+      value: status,
+      icon: Clock,
+      iconClass: "text-accent-warning",
+    },
+    measureType
+      ? { label: "Type", value: measureType, icon: FileText, iconClass: "text-muted-foreground" }
+      : null,
+    estimatedCost
+      ? { label: "Estimated Cost", value: estimatedCost, icon: DollarSign, iconClass: "text-accent-insight-fiscal" }
+      : null,
+    votingDeadline
+      ? { label: "Voting Deadline", value: votingDeadline, icon: Calendar, iconClass: "text-accent-insight-summary" }
+      : null,
+  ].filter(Boolean);
 
   return (
-    <div className="grid grid-cols-2 gap-4 border-y py-4 sm:grid-cols-4">
-      <div className="space-y-1">
-        <p className="text-xs font-medium text-muted-foreground">Status</p>
-        <div>{getStatusBadge()}</div>
-      </div>
-
-      <div className="space-y-1">
-        <p className="text-xs font-medium text-muted-foreground">Type</p>
-        <p className="text-sm font-medium">{measure.measureType}</p>
-      </div>
-
-      <div className="space-y-1">
-        <p className="text-xs font-medium text-muted-foreground">Estimated Cost</p>
-        <p className="text-sm font-medium">{formatCost()}</p>
-      </div>
-
-      <div className="space-y-1">
-        <p className="text-xs font-medium text-muted-foreground">Voting Deadline</p>
-        <p className="text-sm font-medium">
-          {election ? formatDate(election.date) : "TBD"}
-        </p>
-      </div>
+    <div className="grid grid-cols-2 gap-3 rounded-lg bg-muted/50 p-4">
+      {facts.map((fact) => {
+        const Icon = fact!.icon;
+        return (
+          <div key={fact!.label} className="space-y-1">
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              {fact!.label}
+            </span>
+            <span className="flex items-center gap-1.5 font-medium">
+              <Icon className={cn("h-4 w-4", fact!.iconClass)} />
+              {fact!.value}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }
