@@ -1,3 +1,4 @@
+import { Vote, PenLine, BarChart3 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export interface Measure {
@@ -12,15 +13,21 @@ interface MeasureCardProps {
   measure: Measure;
 }
 
+const typeIcons = {
+  proposition: Vote,
+  initiative: PenLine,
+  measure: BarChart3,
+} as const;
+
 export function MeasureCard({ measure }: MeasureCardProps) {
-  const icon = measure.type === "proposition" ? "📋" : measure.type === "initiative" ? "📝" : "📊";
+  const Icon = typeIcons[measure.type];
 
   return (
     <Card className="cursor-pointer transition-colors hover:bg-muted/50">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <span>{icon}</span>
-          <span>{measure.number}</span>
+          <Icon className="h-5 w-5 text-muted-foreground" />
+          <span className="font-serif">{measure.number}</span>
         </CardTitle>
         <CardDescription className="font-medium text-foreground">
           {measure.title}
