@@ -1,10 +1,26 @@
-import { mutation, query } from "./_generated/server";
+/**
+ * Insights table mutations and queries
+ *
+ * Manages AI-generated insights for ballot measures
+ */
+
+import {
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+} from "./_generated/server";
 import { v } from "convex/values";
 
-// Create a new insight for a measure
-export const create = mutation({
+/**
+ * Store a single insight (internal - called by generateInsights job)
+ */
+export const storeInsight = internalMutation({
   args: {
     measureId: v.id("measures"),
+    generatedAt: v.number(),
+    model: v.string(),
+    promptVersion: v.string(),
     type: v.union(
       v.literal("summary"),
       v.literal("fiscal"),
@@ -13,7 +29,11 @@ export const create = mutation({
       v.literal("conflicts")
     ),
     content: v.string(),
-    confidence: v.union(v.literal("high"), v.literal("medium"), v.literal("low")),
+    confidence: v.union(
+      v.literal("high"),
+      v.literal("medium"),
+      v.literal("low")
+    ),
     uncertaintyFlags: v.optional(v.array(v.string())),
     citations: v.array(
       v.object({
@@ -23,16 +43,36 @@ export const create = mutation({
         context: v.optional(v.string()),
       })
     ),
-    generatedAt: v.number(),
-    model: v.string(),
-    promptVersion: v.string(),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("insights", args);
   },
 });
 
-// Get all insights for a measure
+/**
+ * Delete all insights for a measure (for regeneration)
+ */
+export const deleteByMeasure = internalMutation({
+  args: {
+    measureId: v.id("measures"),
+  },
+  handler: async (ctx, args) => {
+    const insights = await ctx.db
+      .query("insights")
+      .withIndex("by_measure", (q) => q.eq("measureId", args.measureId))
+      .collect();
+
+    for (const insight of insights) {
+      await ctx.db.delete(insight._id);
+    }
+
+    return { deleted: insights.length };
+  },
+});
+
+/**
+ * Get all insights for a measure (public query)
+ */
 export const getByMeasure = query({
   args: {
     measureId: v.id("measures"),
@@ -45,8 +85,25 @@ export const getByMeasure = query({
   },
 });
 
-// Get insight by type for a measure
-export const getByType = query({
+/**
+ * Get all insights for a measure (internal query)
+ */
+export const getByMeasureInternal = internalQuery({
+  args: {
+    measureId: v.id("measures"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("insights")
+      .withIndex("by_measure", (q) => q.eq("measureId", args.measureId))
+      .collect();
+  },
+});
+
+/**
+ * Get a specific insight by measure and type
+ */
+export const getByMeasureAndType = query({
   args: {
     measureId: v.id("measures"),
     type: v.union(
@@ -67,103 +124,39 @@ export const getByType = query({
   },
 });
 
-// Get measure with all insights in one query
-export const getMeasureWithInsights = query({
+/**
+ * Check if insights exist for a measure
+ */
+export const hasInsights = query({
   args: {
     measureId: v.id("measures"),
   },
   handler: async (ctx, args) => {
-    const measure = await ctx.db.get(args.measureId);
-    if (!measure) return null;
-
-    const insights = await ctx.db
+    const first = await ctx.db
       .query("insights")
       .withIndex("by_measure", (q) => q.eq("measureId", args.measureId))
-      .collect();
-
-    return { measure, insights };
+      .first();
+    return first !== null;
   },
 });
 
-// Update an insight (e.g., if regenerating)
-export const update = mutation({
+/**
+ * Update prediction accuracy for an insight (after election results)
+ */
+export const updatePredictionAccuracy = mutation({
   args: {
-    id: v.id("insights"),
-    content: v.optional(v.string()),
-    confidence: v.optional(v.union(v.literal("high"), v.literal("medium"), v.literal("low"))),
-    uncertaintyFlags: v.optional(v.array(v.string())),
-    citations: v.optional(
-      v.array(
-        v.object({
-          textSpan: v.string(),
-          startOffset: v.number(),
-          endOffset: v.number(),
-          context: v.optional(v.string()),
-        })
-      )
+    insightId: v.id("insights"),
+    actualOutcome: v.string(),
+    predictionAccuracy: v.union(
+      v.literal("correct"),
+      v.literal("partial"),
+      v.literal("incorrect")
     ),
-    generatedAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const { id, ...updates } = args;
-    return await ctx.db.patch(id, updates);
-  },
-});
-
-// Delete all insights for a measure (useful for regeneration)
-export const deleteByMeasure = mutation({
-  args: {
-    measureId: v.id("measures"),
-  },
-  handler: async (ctx, args) => {
-    const insights = await ctx.db
-      .query("insights")
-      .withIndex("by_measure", (q) => q.eq("measureId", args.measureId))
-      .collect();
-
-    for (const insight of insights) {
-      await ctx.db.delete(insight._id);
-    }
-
-    return { deleted: insights.length };
-  },
-});
-
-// Get insights with optional filtering
-export const list = query({
-  args: {
-    measureId: v.optional(v.id("measures")),
-    type: v.optional(
-      v.union(
-        v.literal("summary"),
-        v.literal("fiscal"),
-        v.literal("legal_changes"),
-        v.literal("affected_groups"),
-        v.literal("conflicts")
-      )
-    ),
-    limit: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    const measureId = args.measureId;
-    const type = args.type;
-
-    if (measureId && type) {
-      return await ctx.db
-        .query("insights")
-        .withIndex("by_measure_type", (q) =>
-          q.eq("measureId", measureId).eq("type", type)
-        )
-        .order("desc")
-        .take(args.limit ?? 100);
-    } else if (measureId) {
-      return await ctx.db
-        .query("insights")
-        .withIndex("by_measure", (q) => q.eq("measureId", measureId))
-        .order("desc")
-        .take(args.limit ?? 100);
-    }
-
-    return await ctx.db.query("insights").order("desc").take(args.limit ?? 100);
+    return await ctx.db.patch(args.insightId, {
+      actualOutcome: args.actualOutcome,
+      predictionAccuracy: args.predictionAccuracy,
+    });
   },
 });
