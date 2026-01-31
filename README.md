@@ -10,6 +10,7 @@ This project was created with [Better-T-Stack](https://github.com/AmanVarshney01
 - **shadcn/ui** - Reusable UI components
 - **Convex** - Reactive backend-as-a-service platform
 - **Oxlint** - Oxlint + Oxfmt (linting & formatting)
+- **Turborepo** - Optimized monorepo build system
 
 ## Getting Started
 
