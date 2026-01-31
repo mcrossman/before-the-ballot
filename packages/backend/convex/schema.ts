@@ -15,9 +15,10 @@ export default defineSchema({
 
     // Content - Full document extraction
     title: v.string(),
-    officialText: v.string(),                 // Legacy: deprecated but kept for compatibility
+    officialText: v.optional(v.string()),     // Legacy: deprecated but kept for compatibility
     fullText: v.optional(v.string()),         // Complete document text with page breaks
     pages: v.optional(v.array(v.string())),   // Page-by-page text array for citation mapping
+    textFileId: v.optional(v.id("_storage")), // Convex file storage ID for extracted text
     
     // PDF Metadata
     metadata: v.optional(v.object({
