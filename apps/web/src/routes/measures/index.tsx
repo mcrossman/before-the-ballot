@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { MeasureCard, type Measure } from "@/components/measure/MeasureCard";
@@ -42,21 +41,7 @@ const mockMeasures: Measure[] = [
 
 function MeasuresComponent() {
   const { location, isLoading: isLocationLoading } = useLocation();
-  const [measures, setMeasures] = useState<Measure[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const loadMeasures = async () => {
-      setIsLoading(true);
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      setMeasures(mockMeasures);
-      setIsLoading(false);
-    };
-
-    if (!isLocationLoading) {
-      loadMeasures();
-    }
-  }, [isLocationLoading]);
+  const measures = mockMeasures;
 
   if (isLocationLoading) {
     return (
@@ -97,13 +82,7 @@ function MeasuresComponent() {
         </p>
       </div>
 
-      {isLoading ? (
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-32 w-full" />
-          ))}
-        </div>
-      ) : measures.length > 0 ? (
+      {measures.length > 0 ? (
         <div className="space-y-4">
           {measures.map((measure) => {
             const slug = measure.number
