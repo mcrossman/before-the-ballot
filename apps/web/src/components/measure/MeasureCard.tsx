@@ -6,7 +6,7 @@ export interface Measure {
   number: string;
   title: string;
   description: string;
-  type: "proposition" | "measure" | "initiative";
+  type: "proposition" | "measure" | "initiative" | "constitutional-amendment";
 }
 
 interface MeasureCardProps {
