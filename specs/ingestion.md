@@ -49,8 +49,8 @@ Fetch Listing Page
 ### Scheduled Jobs
 
 ```typescript
-// convex/jobs/scrape.ts
-import { cron } from "convex/server";
+// packages/backend/convex/crons.ts
+import { cron } from "./_generated/server";
 
 // CA SoS scraper - runs daily at 6:00 AM PT
 cron({
@@ -414,7 +414,7 @@ export const backfillHistorical = internalAction({
 ## File Structure
 
 ```
-convex/
+packages/backend/convex/
 ├── jobs/
 │   ├── scrapeCaSos.ts         # CA SoS scraper action
 │   ├── scrapeSantaClara.ts    # Santa Clara scraper action
@@ -426,7 +426,8 @@ convex/
 │   └── parsers.ts             # HTML parsing utilities
 ├── schema.ts                  # Updated with source tracking
 ├── measures.ts                # Measure mutations/queries
-└── ingestionJobs.ts           # Job tracking
+├── ingestionJobs.ts           # Job tracking
+└── crons.ts                   # Scheduled job definitions
 ```
 
 ## Monitoring
